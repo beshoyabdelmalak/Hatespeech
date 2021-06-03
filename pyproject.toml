@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "hate-speech"
+version = "0.1.0"
+description = ""
+authors = ["beshoyabdelmalak <beshoy.abdelmalak@stud.uni-due.de>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+torch = "^1.8.1"
+torchtext = "0.6.0"
+tensorflow = "1.15.2"
+keras = "2.0.0"
+datasets = "^1.6.2"
+sklearn = "^0.0"
+black = "^21.5b1"
+gensim = "^4.0.1"
+transformers = "^4.6.1"
+seaborn = "^0.11.1"
+spacy = "^3.0.6"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
