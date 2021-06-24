@@ -68,7 +68,7 @@ class Preprocessing:
 
 
 	def trim_string(self, text):
-		return " ".join(text[: 200])
+		return " ".join(text[:200])
 
 
 	def clean_text(self, text):
@@ -80,14 +80,10 @@ class Preprocessing:
 
 	def get_annotator_label(self, annotators):
 		labels = [annotators["label"][0], annotators["label"][1], annotators["label"][2]]
-		counter = Counter(labels)
-		majority_label = counter.most_common(1)[0][0]
-        # for binary classifier
-        # labels = {0: hatespeech, 1:normal, 2:offensive}
-		if majority_label == 1:
-			return 0
-		return 1
-        # return majority_label
+		for label in labels:
+			if label == 0 or label == 2:
+				return 1
+		return 0
 
 
 	def load_data(self):

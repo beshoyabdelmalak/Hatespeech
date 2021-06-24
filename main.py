@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -48,6 +49,8 @@ class Execute:
 		self.batch_size = args.batch_size
 		
 		self.model = LSTM(args)
+		self.model.preprocessing = self.preprocessing
+
 		
 	def __init_data__(self, args):
 		'''
@@ -78,12 +81,11 @@ class Execute:
 		valid_set = DatasetMaper(self.x_valid, self.y_valid)
 		
 		self.loader_training = DataLoader(training_set, batch_size=self.batch_size)
-		self.loader_test = DataLoader(test_set)
-		self.loader_valid = DataLoader(valid_set)
+		self.loader_test = DataLoader(test_set, batch_size=self.batch_size)
+		self.loader_valid = DataLoader(valid_set, batch_size=self.batch_size)
 		
-		# optimizer = optim.RMSprop(self.model.parameters(), lr=args.learning_rate)
 		self.optimizer = optim.Adam(self.model.parameters(), lr=args.learning_rate)
-		self.criterion = nn.BCELoss()
+		self.criterion = nn.CrossEntropyLoss()
 
 		for epoch in range(args.epochs):
 			
@@ -94,25 +96,23 @@ class Execute:
 			for x_batch, y_batch in self.loader_training:
 				
 				x = x_batch.type(torch.LongTensor)
-				y = y_batch.type(torch.FloatTensor)
-				
-				y_pred = self.model(x).squeeze()
-				
-				loss = self.criterion(y_pred, y)
+				y = y_batch.type(torch.LongTensor)
 				
 				self.optimizer.zero_grad()
-				
+
+				output = self.model(x)				
+				loss = self.criterion(output, y)
+
 				loss.backward()
-				
+
 				self.optimizer.step()
 				
-				predictions += y_pred
+				predictions += output
 			
-			preds = torch.FloatTensor(predictions)
 			valid_predictions = self.evaluation(self.loader_valid)
 			
-			train_accuary = self.calculate_accuray(torch.FloatTensor(self.y_train), preds)
-			valid_accuracy = self.calculate_accuray(torch.FloatTensor(self.y_valid), valid_predictions)
+			train_accuary = self.calculate_accuray(self.y_train, predictions)
+			valid_accuracy = self.calculate_accuray(self.y_valid, valid_predictions)
 			
 			print("Epoch: %d, loss: %.2f, Train accuracy: %.2f, Validation accuracy: %.2f" % (epoch+1, loss.item(), train_accuary, valid_accuracy))
 
@@ -123,32 +123,72 @@ class Execute:
 		with torch.no_grad():
 			for x_batch, y_batch in loader:
 				x = x_batch.type(torch.LongTensor)
-				y = y_batch.type(torch.FloatTensor)
+				y = y_batch.type(torch.LongTensor)
 				
 				y_pred = self.model(x)
 				predictions += y_pred
 				
-		return torch.FloatTensor(predictions)
-			
-	@staticmethod
-	def calculate_accuray(grand_truth, predictions):
-		y_pred_tag = torch.round(predictions)
+		return predictions
 
-		correct_pred = (y_pred_tag == grand_truth).float()
+	
+	@staticmethod
+	def calculate_accuray_with_threshold(grand_truth, predictions):
+		preds = []
+		threshold = 0.5
+		indexes_to_delete = []
+		for i,(true, pred) in enumerate(zip(grand_truth, predictions)):
+			if pred[1] > threshold:
+				preds.append(1)
+			elif pred[0] > threshold:
+				preds.append(0)
+			else:
+				indexes_to_delete.append(i)
+
+		new_truth = np.delete(grand_truth, indexes_to_delete)
+		correct_pred = (torch.FloatTensor(preds) == torch.FloatTensor(new_truth)).float()
 		acc = correct_pred.sum() / len(correct_pred)
 		acc = torch.round(acc * 100)
-        
+		return acc, preds, new_truth
+	
+	@staticmethod
+	def calculate_accuray(grand_truth, predictions):
+		predictions = torch.stack(predictions)
+		preds = torch.argmax(predictions, dim=1)
+		correct_pred = (preds == torch.FloatTensor(grand_truth)).float()
+		acc = correct_pred.sum() / len(correct_pred)
+		acc = torch.round(acc * 100)
 		return acc
 	
 	def test(self):
 		test_predictions = self.evaluation(self.loader_test)
 
-		test_accuracy = self.calculate_accuray(torch.FloatTensor(self.y_test), test_predictions)
+		test_accuracy, test_pred, true_labels = self.calculate_accuray_with_threshold(self.y_test, test_predictions)
 		print("Test accuracy: %.2f" % (test_accuracy))
 
-		print(classification_report(self.y_test, torch.round(test_predictions)))
-		confusion_matrix_df = pd.DataFrame(confusion_matrix(self.y_test, torch.round(test_predictions)))
-		sns.heatmap(confusion_matrix_df, annot=True)
+		print(classification_report(true_labels, test_pred))
+		conf_mt = confusion_matrix(true_labels, test_pred)
+
+		categories = ["Normal", "Hate/Offensive"]
+		stats_text = ""
+		if len(conf_mt) == 2:
+			stats_text = create_binary_stats(conf_mt)
+
+		sns.heatmap(conf_mt, annot=True, fmt='g', cmap='Blues', xticklabels=categories, yticklabels=categories)
+
+		plt.ylabel('True label')
+		plt.xlabel(f'Predicted label {stats_text}')
+		plt.show()
+	
+
+def create_binary_stats(confusion_matrix):
+	accuracy  = np.trace(confusion_matrix) / float(np.sum(confusion_matrix))
+	precision = confusion_matrix[1,1] / sum(confusion_matrix[:,1])
+	recall    = confusion_matrix[1,1] / sum(confusion_matrix[1,:])
+	f1_score  = 2*precision*recall / (precision + recall)
+	stats_text = "\n\nAccuracy={:0.3f}\nPrecision={:0.3f}\nRecall={:0.3f}\nF1 Score={:0.3f}".format(
+		accuracy,precision,recall,f1_score)
+	return stats_text
+
 	
 if __name__ == "__main__":
 	
@@ -157,3 +197,5 @@ if __name__ == "__main__":
 	execute = Execute(args)
 	execute.train()
 	execute.test()
+	MODEL_PATH = 'model.pth'
+	torch.save(execute.model, MODEL_PATH)
