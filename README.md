@@ -56,7 +56,7 @@ We also had to collapse the hate-speech and offensive labels together for our bi
 
 It contains 25296 entries, so we added them to our training dataset and then splited it into trianing 80% and testing 20 %
 
-### Bilstem Model
+## Bilstem Model
 
 Bidirectional LSTMs train two instead of one LSTMs on the input sequence. The first on the input sequence as-is and the second on a reversed copy of the input sequence. This can provide additional context to the network and result in faster and even fuller learning on the problem.
 
@@ -66,18 +66,22 @@ Bidirectional LSTMs train two instead of one LSTMs on the input sequence. The fi
 We used a Bilstm with the following hyperparameters:
 
 epochs : 5
+
 learning rate: 0.001
+
 hidden dimension : 128
+
 batch size : 128
+
 sentence maximum length: 280
 
-#### Result
+### Result
 
 label |	precision | recall | f1 
 ----- | --------- | ------ | ----
-Neutral |
-Hate |
-Overall accuracy | | |
+Neutral | 0.74 | 0.80 | 0.77
+Hate | 0.95 | 0.93 | 0.94
+Overall accuracy | | | 0.90
 
 ### Thresolding
 
@@ -87,41 +91,41 @@ We also tried to test the model with threshold so only the predicted labels with
 
 label |	precision | recall | f1 
 ----- | --------- | ------ | ----
-Neutral |
-Hate |
-Overall accuracy | | |
+Neutral | 0.77 | 0.78 | 0.78
+Hate | 0.95 | 0.94 | 0.95 
+Overall accuracy | | | 0.91
 
 #### 65% Threshold
 
 label |	precision | recall | f1 
 ----- | --------- | ------ | ----
-Neutral |
-Hate |
-Overall accuracy | | |
+Neutral | 0.81 | 0.77 | 0.79
+Hate | 0.95 | 0.96 | 0.96
+Overall accuracy | | | 0.93
 
 #### 70% Threshold
 
 label |	precision | recall | f1 
 ----- | --------- | ------ | ----
-Neutral |
-Hate |
-Overall accuracy | | |
+Neutral | 0.83 | 0.68 | 0.75
+Hate | 0.94 | 0.97 | 0.95
+Overall accuracy | | | 0.92
 
 
-# Install requirement:
+## Install requirement:
 
   - Install peotry `pip install --user poetry`
   - navigate to the folder of the repo
   - Install requirements `poetry install`
 
-# Run classifier:
+## Run classifier:
 
 The hyperparameters can be found in ./parser.py.
 
 To train the model run `poetry run python main.py` in the terminal
 
 
-### Prediction API
+## Prediction API
 
 The model has a small API for prediction. To run the server execute `uvicorn main:app --reload` in the terminal
 
